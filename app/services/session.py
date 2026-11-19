@@ -53,6 +53,14 @@ def _require_session(db: Session, session_id: int) -> WorkoutSession:
     return obj
 
 
+def update_notes(db: Session, session_id: int, notes: str | None) -> WorkoutSession:
+    obj = _require_session(db, session_id)
+    obj.notes = notes
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+
 def save_sets(
     db: Session, session_id: int, exercise_id: int, sets: list[SetLogIn]
 ) -> list[SetLog]:

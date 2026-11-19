@@ -9,8 +9,10 @@ import { api } from "./client";
 
 export const sessionsApi = {
   list: () => api.get<WorkoutSession[]>("/sessions"),
-  create: (body: { workout_id: number; client_token?: string; performed_at?: string }) =>
+  create: (body: { workout_id: number; client_token?: string; performed_at?: string; notes?: string | null }) =>
     api.post<WorkoutSession>("/sessions", body),
+  update: (id: number, body: { notes: string | null }) =>
+    api.patch<WorkoutSession>(`/sessions/${id}`, body),
   detail: (id: number) => api.get<SessionDetail>(`/sessions/${id}`),
   saveSets: (sessionId: number, exerciseId: number, sets: SetLogIn[]) =>
     api.put<SetLog[]>(`/sessions/${sessionId}/exercises/${exerciseId}/sets`, {

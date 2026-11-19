@@ -10,6 +10,10 @@ class SessionCreate(BaseModel):
     client_token: str | None = Field(default=None, max_length=64)
 
 
+class SessionUpdate(BaseModel):
+    notes: str | None = None
+
+
 class SessionRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

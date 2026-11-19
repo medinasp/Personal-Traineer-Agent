@@ -210,16 +210,18 @@ async function pushAll(): Promise<void> {
   }
 
   // 3) sessoes
-  for (const s of await all<{ id: number; server_id: number | null; workout_id: number; performed_at: string; client_token: string }>(
+  for (const s of await all<{ id: number; server_id: number | null; workout_id: number; performed_at: string; client_token: string; notes: string | null }>(
     "SELECT * FROM workout_session WHERE dirty = 1 AND deleted = 0",
   )) {
     if (s.server_id != null) {
+      // ja existe no servidor: so o que pode ter mudado e a observacao
+      await sessionsApi.update(s.server_id, { notes: s.notes });
       await run("UPDATE workout_session SET dirty = 0 WHERE id = ?", [s.id]);
       continue;
     }
     const wkSid = await serverId("workout", s.workout_id);
     if (wkSid == null) continue;
-    const real = await sessionsApi.create({ workout_id: wkSid, client_token: s.client_token, performed_at: s.performed_at });
+    const real = await sessionsApi.create({ workout_id: wkSid, client_token: s.client_token, performed_at: s.performed_at, notes: s.notes });
     await run("UPDATE workout_session SET server_id = ?, dirty = 0 WHERE id = ?", [real.id, s.id]);
   }
 

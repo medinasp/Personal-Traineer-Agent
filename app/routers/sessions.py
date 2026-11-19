@@ -7,6 +7,7 @@ from app.schemas.session import (
     SessionCreate,
     SessionDetail,
     SessionRead,
+    SessionUpdate,
     SetLogRead,
     SetsSave,
 )
@@ -28,6 +29,11 @@ def list_all(workout_id: int | None = None, db: Session = Depends(get_db)) -> li
 @router.get("/{session_id}", response_model=SessionDetail)
 def get(session_id: int, db: Session = Depends(get_db)) -> SessionDetail:
     return service.get_detail(db, session_id)
+
+
+@router.patch("/{session_id}", response_model=SessionRead)
+def update(session_id: int, data: SessionUpdate, db: Session = Depends(get_db)) -> SessionRead:
+    return service.update_notes(db, session_id, data.notes)
 
 
 @router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)

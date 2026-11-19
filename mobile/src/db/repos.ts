@@ -225,6 +225,13 @@ export const sessionsRepo = {
     );
     return (await this.detail(res.lastInsertRowId))!;
   },
+  async setNotes(sessionId: number, notes: string | null): Promise<void> {
+    await run("UPDATE workout_session SET notes = ?, updated_at = ?, dirty = 1 WHERE id = ?", [
+      notes && notes.trim() ? notes : null,
+      nowIso(),
+      sessionId,
+    ]);
+  },
   async saveSets(sessionId: number, exerciseId: number, sets: SetLogIn[]): Promise<void> {
     await run("DELETE FROM set_log WHERE session_id = ? AND exercise_id = ?", [sessionId, exerciseId]);
     for (const s of sets) {

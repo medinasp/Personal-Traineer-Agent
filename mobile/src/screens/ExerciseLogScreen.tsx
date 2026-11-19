@@ -67,6 +67,12 @@ export function ExerciseLogScreen({ route, navigation }: TodayScreenProps<"Exerc
 
   const session = useSession(sessionId);
 
+  // "ultima vez" derivado do historico (local-first): sessao mais recente que nao e hoje
+  const history = useExerciseHistory(exerciseId, { limit: 50 });
+  const prior = (history.data ?? []).find((h) => !isSameLocalDay(h.performed_at));
+  const lastDate = prior?.performed_at ?? null;
+  const lastMap = new Map((prior?.sets ?? []).map((l) => [l.set_number, l]));
+
   const [rows, setRows] = useState<Row[]>([]);
   const [ready, setReady] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -79,12 +85,14 @@ export function ExerciseLogScreen({ route, navigation }: TodayScreenProps<"Exerc
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (ready || session.isLoading) return;
+    if (ready || session.isLoading || history.isLoading) return;
     const existing = (session.data?.set_logs ?? [])
       .filter((s) => s.exercise_id === exerciseId)
       .sort((a, b) => a.set_number - b.set_number);
-    // ja registrou algo? mostra exatamente o que tem. Senao, usa o alvo do treino como ponto de partida.
-    const count = existing.length > 0 ? existing.length : targetSets;
+    // ja registrou hoje? mostra exatamente o que tem. Senao, abre com a MESMA quantidade
+    // de series do ultimo treino deste exercicio. Se nunca fez, cai no alvo do treino.
+    const lastCount = prior?.sets.length ?? 0;
+    const count = existing.length > 0 ? existing.length : lastCount > 0 ? lastCount : targetSets;
     setRows(
       Array.from({ length: count }, (_, i) => {
         const found = existing.find((s) => s.set_number === i + 1);
@@ -95,13 +103,7 @@ export function ExerciseLogScreen({ route, navigation }: TodayScreenProps<"Exerc
       }),
     );
     setReady(true);
-  }, [ready, session.isLoading, session.data, exerciseId, targetSets]);
-
-  // "ultima vez" derivado do historico (funciona offline via cache): sessao mais recente que nao e hoje
-  const history = useExerciseHistory(exerciseId, { limit: 50 });
-  const prior = (history.data ?? []).find((h) => !isSameLocalDay(h.performed_at));
-  const lastDate = prior?.performed_at ?? null;
-  const lastMap = new Map((prior?.sets ?? []).map((l) => [l.set_number, l]));
+  }, [ready, session.isLoading, history.isLoading, session.data, exerciseId, targetSets, prior]);
 
   // detecta o treino mais recente em que o peso maximo MUDOU vs. o anterior (subiu ou caiu)
   const change = useMemo(() => {

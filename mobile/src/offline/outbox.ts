@@ -44,6 +44,10 @@ export async function enqueueSaveSets(ref: number, exerciseId: number, sets: Set
   await sessionsRepo.saveSets(ref, exerciseId, sets);
   kick();
 }
+export async function saveLocalSessionNotes(sessionId: number, notes: string | null): Promise<void> {
+  await sessionsRepo.setNotes(sessionId, notes);
+  kick();
+}
 
 // ---- exercicios ----
 export async function createLocalExercise(data: ExerciseCreate): Promise<Exercise> {
