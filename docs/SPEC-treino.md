@@ -1,6 +1,6 @@
 # Spec — Módulo Treino (back)
 
-> App pessoal de treino + nutrição. Este documento cobre o **back do módulo de treino**:
+> App pessoal de treino. Este documento cobre o **back do módulo de treino**:
 > cadastro de exercícios, montagem de treinos, registro de séries por sessão e
 > histórico para comparação "hoje vs última vez".
 
@@ -130,6 +130,5 @@ Retorna as séries da última sessão anterior desse exercício nesse treino →
 
 ## 9. Escopo — fora deste spec
 
-- Nutrição (módulo separado).
 - Autenticação (entra só na fase "público").
 - Análises/dashboards (fase posterior; dados já ficam prontos para isso).

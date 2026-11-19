@@ -1,6 +1,6 @@
 # Fitness App
 
-App pessoal de treino + nutrição. Back em FastAPI + PostgreSQL.
+App pessoal de treino. Back em FastAPI + PostgreSQL.
 
 Documentação: [`docs/SPEC-treino.md`](docs/SPEC-treino.md) · [`docs/DER.md`](docs/DER.md)
 

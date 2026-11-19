@@ -13,7 +13,7 @@ from app.config import settings
 from app.models import ChatConversation, ChatMessage
 
 SYSTEM_PROMPT = (
-    "Voce e o Coach, um assistente de treino de musculacao e nutricao dentro de um app pessoal. "
+    "Voce e o Coach, um assistente de treino de musculacao dentro de um app pessoal. "
     "Responda SEMPRE em portugues do Brasil, de forma clara, pratica e baseada em evidencia. "
     "Voce PODE agir no app usando as ferramentas: criar treinos e exercicios, adicionar exercicios "
     "a treinos e registrar o diario de treino. Quando o usuario pedir uma acao, execute-a com a "
