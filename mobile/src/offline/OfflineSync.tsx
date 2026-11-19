@@ -1,16 +1,16 @@
 import { useEffect } from "react";
 import { AppState } from "react-native";
 
-import { flush } from "./outbox";
+import { syncNow } from "../db/sync";
 
-/** Dispara a sincronizacao: ao abrir, ao voltar pro 1o plano e a cada 20s. */
+/** Sincroniza o banco local com o backend: ao abrir, ao voltar pro 1o plano e a cada 20s. */
 export function OfflineSync() {
   useEffect(() => {
-    void flush();
+    void syncNow();
     const sub = AppState.addEventListener("change", (st) => {
-      if (st === "active") void flush();
+      if (st === "active") void syncNow();
     });
-    const iv = setInterval(() => void flush(), 20000);
+    const iv = setInterval(() => void syncNow(), 20000);
     return () => {
       sub.remove();
       clearInterval(iv);

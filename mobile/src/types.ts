@@ -101,19 +101,6 @@ export interface SetLogIn {
   weight_kg?: number | null;
 }
 
-export interface ChatMessageRow {
-  id: number;
-  role: "user" | "assistant";
-  content: string;
-  created_at: string;
-}
-
-export interface ChatResponse {
-  reply: string;
-  actions: string[];
-  conversation_id: number | null;
-}
-
 export interface Profile {
   id: number;
   height_cm: number | null;
@@ -155,4 +142,5 @@ export interface MeasurementCreate {
   body_water_pct?: number | null;
   bmr_kcal?: number | null;
   notes?: string | null;
+  client_token?: string;
 }

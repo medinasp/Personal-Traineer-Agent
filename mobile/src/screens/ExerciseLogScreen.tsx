@@ -1,10 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useHeaderHeight } from "@react-navigation/elements";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
+  Keyboard,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -31,8 +31,18 @@ interface Row {
 
 export function ExerciseLogScreen({ route, navigation }: TodayScreenProps<"ExerciseLog">) {
   const { c } = useTheme();
-  const headerHeight = useHeaderHeight();
   const { sessionId, exerciseId, targetSets, workoutId, title, resumed } = route.params;
+
+  // altura do teclado -> espaco no fim da lista p/ rolar as ultimas series acima dele
+  const [kbHeight, setKbHeight] = useState(0);
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", (e) => setKbHeight(e.endCoordinates.height));
+    const hide = Keyboard.addListener("keyboardDidHide", () => setKbHeight(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
 
   function newSession() {
     Alert.alert(
@@ -73,7 +83,8 @@ export function ExerciseLogScreen({ route, navigation }: TodayScreenProps<"Exerc
     const existing = (session.data?.set_logs ?? [])
       .filter((s) => s.exercise_id === exerciseId)
       .sort((a, b) => a.set_number - b.set_number);
-    const count = Math.max(targetSets, existing.length);
+    // ja registrou algo? mostra exatamente o que tem. Senao, usa o alvo do treino como ponto de partida.
+    const count = existing.length > 0 ? existing.length : targetSets;
     setRows(
       Array.from({ length: count }, (_, i) => {
         const found = existing.find((s) => s.set_number === i + 1);
@@ -153,6 +164,10 @@ export function ExerciseLogScreen({ route, navigation }: TodayScreenProps<"Exerc
   function addRow() {
     setRows((prev) => [...prev, { reps: "", weight: "" }]);
   }
+  function removeRow(i: number) {
+    setRows((prev) => prev.filter((_, idx) => idx !== i));
+    scheduleSave();
+  }
 
   // ao sair da tela: garante que o ultimo valor foi salvo
   useEffect(() => {
@@ -167,14 +182,10 @@ export function ExerciseLogScreen({ route, navigation }: TodayScreenProps<"Exerc
   if (!ready) return <ActivityIndicator style={styles.center} size="large" color={c.primary} />;
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.flex, { backgroundColor: c.bg }]}
-      behavior="padding"
-      keyboardVerticalOffset={headerHeight}
-    >
+    <View style={[styles.flex, { backgroundColor: c.bg }]}>
       <ScrollView
         style={styles.flex}
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[styles.container, { paddingBottom: 24 + kbHeight }]}
         keyboardShouldPersistTaps="handled"
       >
         <RestTimer />
@@ -220,6 +231,9 @@ export function ExerciseLogScreen({ route, navigation }: TodayScreenProps<"Exerc
                   placeholder="0"
                   placeholderTextColor={c.textMuted}
                 />
+                <Pressable onPress={() => removeRow(i)} hitSlop={8} style={styles.removeBtn}>
+                  <Ionicons name="close-circle" size={22} color={c.danger} />
+                </Pressable>
               </View>
             );
           })}
@@ -260,18 +274,20 @@ export function ExerciseLogScreen({ route, navigation }: TodayScreenProps<"Exerc
         ) : null}
       </ScrollView>
 
-      <View style={styles.footer}>
-        <Text style={[styles.saved, { color: dirty ? c.textMuted : c.primary }]}>
-          {dirty ? "Salvando…" : "Salvo ✓"}
-        </Text>
-        <Button
-          label="Voltar"
-          icon="arrow-back"
-          variant="secondary"
-          onPress={() => navigation.goBack()}
-        />
-      </View>
-    </KeyboardAvoidingView>
+      {kbHeight === 0 ? (
+        <View style={styles.footer}>
+          <Text style={[styles.saved, { color: dirty ? c.textMuted : c.primary }]}>
+            {dirty ? "Salvando…" : "Salvo ✓"}
+          </Text>
+          <Button
+            label="Voltar"
+            icon="arrow-back"
+            variant="secondary"
+            onPress={() => navigation.goBack()}
+          />
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -302,9 +318,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  colSet: { width: 40, textAlign: "center" },
+  colSet: { width: 32, textAlign: "center" },
   colLast: { flex: 1, alignItems: "center" },
-  colIn: { width: 68, marginLeft: 8 },
+  colIn: { width: 62, marginLeft: 6 },
+  removeBtn: { width: 30, alignItems: "center", justifyContent: "center", marginLeft: 2 },
   set: { fontSize: 16, fontWeight: "600" },
   last: { fontSize: 15, textAlign: "center" },
   input: {

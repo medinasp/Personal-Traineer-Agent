@@ -15,6 +15,7 @@ import { useWorkouts } from "../hooks/useWorkouts";
 import { useOutbox } from "../offline/useOutbox";
 import type { RootTabProps } from "../navigation/types";
 import { PersonalDataModal } from "../ui/PersonalDataModal";
+import { SyncModal } from "../ui/SyncModal";
 import { radius, useTheme } from "../theme";
 import { useUser } from "../user";
 import { formatLongDay, relativeDay } from "../utils/date";
@@ -46,6 +47,7 @@ export function HomeScreen({ navigation }: RootTabProps<"Inicio">) {
   const sessions = useSessionsList();
   const { pending, online } = useOutbox();
   const [showData, setShowData] = useState(false);
+  const [showSync, setShowSync] = useState(false);
 
   const now = new Date();
   const period = periodFor(now.getHours());
@@ -96,10 +98,11 @@ export function HomeScreen({ navigation }: RootTabProps<"Inicio">) {
       </LinearGradient>
 
       {pending > 0 || !online ? (
-        <View
-          style={[
+        <Pressable
+          onPress={() => setShowSync(true)}
+          style={({ pressed }) => [
             styles.syncBanner,
-            { backgroundColor: online ? c.primarySoft : c.cardAlt, borderColor: c.border },
+            { backgroundColor: online ? c.primarySoft : c.cardAlt, borderColor: c.border, opacity: pressed ? 0.7 : 1 },
           ]}
         >
           <Ionicons
@@ -114,7 +117,8 @@ export function HomeScreen({ navigation }: RootTabProps<"Inicio">) {
                 : `Offline · ${pending} ${pending === 1 ? "alteração aguardando" : "alterações aguardando"} sincronização`
               : "Offline · trabalhando com dados salvos no aparelho"}
           </Text>
-        </View>
+          <Ionicons name="chevron-forward" size={16} color={c.textMuted} />
+        </Pressable>
       ) : null}
 
       <Text style={[styles.section, { color: c.textMuted }]}>ESTA SEMANA</Text>
@@ -138,9 +142,12 @@ export function HomeScreen({ navigation }: RootTabProps<"Inicio">) {
       <Text style={[styles.section, { color: c.textMuted }]}>VOCÊ</Text>
       <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}>
         <Shortcut icon="body-outline" label="Dados pessoais" onPress={() => setShowData(true)} />
+        <Divider />
+        <Shortcut icon="sync-outline" label="Sincronizar com meu computador" onPress={() => setShowSync(true)} />
       </View>
 
       <PersonalDataModal visible={showData} onClose={() => setShowData(false)} />
+      <SyncModal visible={showSync} onClose={() => setShowSync(false)} />
     </ScrollView>
   );
 }

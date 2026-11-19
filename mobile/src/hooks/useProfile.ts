@@ -1,36 +1,23 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { profileApi } from "../api/profile";
+import { measurementsRepo, profileRepo } from "../db/repos";
+import { createLocalMeasurement, deleteLocalMeasurement, saveLocalProfile } from "../offline/outbox";
 import type { MeasurementCreate, ProfileUpdate } from "../types";
 
 export function useProfile() {
-  return useQuery({ queryKey: ["profile"], queryFn: () => profileApi.get() });
-}
-
-export function useUpdateProfile() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (data: ProfileUpdate) => profileApi.update(data),
-    onSuccess: (p) => qc.setQueryData(["profile"], p),
-  });
+  return useQuery({ queryKey: ["profile"], queryFn: () => profileRepo.get() });
 }
 
 export function useMeasurements() {
-  return useQuery({ queryKey: ["measurements"], queryFn: () => profileApi.measurements() });
+  return useQuery({ queryKey: ["measurements"], queryFn: () => measurementsRepo.list() });
 }
 
+export function useUpdateProfile() {
+  return useMutation({ mutationFn: (data: ProfileUpdate) => saveLocalProfile(data) });
+}
 export function useCreateMeasurement() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (data: MeasurementCreate) => profileApi.createMeasurement(data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["measurements"] }),
-  });
+  return useMutation({ mutationFn: (data: MeasurementCreate) => createLocalMeasurement(data) });
 }
-
 export function useDeleteMeasurement() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: number) => profileApi.deleteMeasurement(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["measurements"] }),
-  });
+  return useMutation({ mutationFn: (id: number) => deleteLocalMeasurement(id) });
 }

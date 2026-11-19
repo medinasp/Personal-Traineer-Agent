@@ -222,6 +222,7 @@ class BodyMeasurement(Base):
     body_water_pct: Mapped[Decimal | None] = mapped_column(Numeric(4, 1))
     bmr_kcal: Mapped[int | None] = mapped_column(Integer)
     notes: Mapped[str | None] = mapped_column(Text)
+    client_token: Mapped[str | None] = mapped_column(String(64), unique=True)  # idempotente (offline)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

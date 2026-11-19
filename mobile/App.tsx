@@ -1,12 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { NavigationContainer } from "@react-navigation/native";
-import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
-import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { StatusBar } from "expo-status-bar";
+import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { getDb } from "./src/db";
 import { OfflineSync } from "./src/offline/OfflineSync";
 import { qc } from "./src/queryClient";
 
@@ -20,7 +20,6 @@ import { RestTimerProvider } from "./src/restTimer";
 import { ThemeProvider, navTheme, useTheme } from "./src/theme";
 import { UserProvider } from "./src/user";
 
-const persister = createAsyncStoragePersister({ storage: AsyncStorage });
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -77,19 +76,19 @@ function Root() {
 }
 
 export default function App() {
+  useEffect(() => {
+    void getDb(); // abre/migra o SQLite no start
+  }, []);
   return (
     <ThemeProvider>
       <UserProvider>
         <RestTimerProvider>
-          <PersistQueryClientProvider
-            client={qc}
-            persistOptions={{ persister, maxAge: 1000 * 60 * 60 * 24 * 30 }}
-          >
+          <QueryClientProvider client={qc}>
             <SafeAreaProvider>
               <OfflineSync />
               <Root />
             </SafeAreaProvider>
-          </PersistQueryClientProvider>
+          </QueryClientProvider>
         </RestTimerProvider>
       </UserProvider>
     </ThemeProvider>

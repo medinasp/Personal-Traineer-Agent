@@ -31,6 +31,12 @@ def list_measurements(db: Session, limit: int = 50) -> list[BodyMeasurement]:
 
 
 def create_measurement(db: Session, data: MeasurementCreate) -> BodyMeasurement:
+    if data.client_token:
+        existing = db.execute(
+            select(BodyMeasurement).where(BodyMeasurement.client_token == data.client_token)
+        ).scalar_one_or_none()
+        if existing is not None:
+            return existing
     payload = data.model_dump(exclude_unset=True)
     obj = BodyMeasurement(**payload)
     db.add(obj)

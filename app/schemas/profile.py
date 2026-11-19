@@ -34,6 +34,7 @@ class MeasurementCreate(BaseModel):
     body_water_pct: float | None = Field(default=None, ge=0, le=100)
     bmr_kcal: int | None = Field(default=None, ge=0)
     notes: str | None = None
+    client_token: str | None = Field(default=None, max_length=64)
 
 
 class MeasurementRead(BaseModel):

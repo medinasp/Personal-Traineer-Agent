@@ -1,15 +1,17 @@
 import { QueryClient } from "@tanstack/react-query";
 
-const MONTH = 1000 * 60 * 60 * 24 * 30;
-
-/** Cliente unico, compartilhado entre o app e a camada offline (outbox). */
+/**
+ * Cliente unico, compartilhado entre o app e a camada local (outbox).
+ * As queries leem do SQLite local (fonte da verdade); o React Query e so a
+ * camada reativa. `offlineFirst` evita que o RQ pause as queries locais quando
+ * o device parece offline — elas resolvem sem rede de qualquer forma.
+ */
 export const qc = new QueryClient({
   defaultOptions: {
     queries: {
-      gcTime: MONTH, // mantem no cache p/ persistir e servir offline
       staleTime: 1000 * 60 * 5,
       retry: 1,
-      networkMode: "offlineFirst", // usa cache quando sem rede
+      networkMode: "offlineFirst",
       refetchOnReconnect: true,
     },
   },

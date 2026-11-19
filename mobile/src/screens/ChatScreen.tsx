@@ -21,7 +21,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { chatApi, transcribeAudio } from "../api/chat";
+import { clearHistory, getHistory, runChat } from "../agent/coach";
+import { CoachConfigError, CoachOfflineError, CoachRateLimitError, transcribe } from "../agent/groq";
+import { useInternet } from "../offline/useInternet";
 import type { RootTabProps } from "../navigation/types";
 import { radius, useTheme } from "../theme";
 import { confirmDelete } from "../ui/confirm";
@@ -43,10 +45,11 @@ export function ChatScreen({ navigation }: RootTabProps<"Coach">) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
+  const online = useInternet();
   const qc = useQueryClient();
   const listRef = useRef<FlatList<Msg>>(null);
 
-  const history = useQuery({ queryKey: ["chat", "history"], queryFn: () => chatApi.history() });
+  const history = useQuery({ queryKey: ["chat", "history"], queryFn: () => getHistory() });
   const [messages, setMessages] = useState<Msg[]>([]);
   const [text, setText] = useState("");
 
@@ -78,10 +81,13 @@ export function ChatScreen({ navigation }: RootTabProps<"Coach">) {
       const uri = recorder.uri;
       if (!uri) return;
       setTranscribing(true);
-      const spoken = await transcribeAudio(uri);
+      const spoken = await transcribe(uri);
       if (spoken) setText((prev) => (prev.trim() ? `${prev.trim()} ${spoken}` : spoken));
     } catch (e) {
-      Alert.alert("Erro na transcrição", String(e));
+      Alert.alert(
+        "Transcrição",
+        e instanceof CoachOfflineError || e instanceof CoachRateLimitError ? (e as Error).message : String(e),
+      );
     } finally {
       setTranscribing(false);
     }
@@ -96,20 +102,23 @@ export function ChatScreen({ navigation }: RootTabProps<"Coach">) {
   }, [history.data]);
 
   const send = useMutation({
-    mutationFn: (msg: string) => chatApi.send(msg),
+    mutationFn: (msg: string) => runChat(msg),
     onSuccess: (res) => {
       setMessages((prev) => [
         ...prev,
         { key: "a" + Date.now(), role: "assistant", content: res.reply, actions: res.actions },
       ]);
-      // o agente pode ter mexido em treinos/exercicios/sessoes -> atualiza tudo
-      qc.invalidateQueries();
+      // runChat ja invalida as queries quando mexe em treinos/exercicios/sessoes
     },
     onError: (e) => {
-      setMessages((prev) => [
-        ...prev,
-        { key: "e" + Date.now(), role: "assistant", content: `Erro: ${String(e)}` },
-      ]);
+      // erros tipados ja trazem mensagem amigavel em pt-BR (offline / limite+tempo / config)
+      const content =
+        e instanceof CoachOfflineError ||
+        e instanceof CoachRateLimitError ||
+        e instanceof CoachConfigError
+          ? (e as Error).message
+          : `Algo deu errado: ${String(e)}`;
+      setMessages((prev) => [...prev, { key: "e" + Date.now(), role: "assistant", content }]);
     },
   });
 
@@ -123,7 +132,7 @@ export function ChatScreen({ navigation }: RootTabProps<"Coach">) {
 
   function clearChat() {
     confirmDelete("Limpar conversa", "Apagar todo o histórico do Coach?", async () => {
-      await chatApi.clear();
+      await clearHistory();
       setMessages([]);
       qc.invalidateQueries({ queryKey: ["chat", "history"] });
     });
@@ -197,13 +206,22 @@ export function ChatScreen({ navigation }: RootTabProps<"Coach">) {
         />
       )}
 
+      {!online ? (
+        <View style={[styles.offline, { backgroundColor: c.cardAlt, borderColor: c.border }]}>
+          <Ionicons name="cloud-offline-outline" size={16} color={c.textMuted} />
+          <Text style={[styles.offlineText, { color: c.textMuted }]}>
+            O Coach precisa de internet. O resto do app funciona offline.
+          </Text>
+        </View>
+      ) : null}
+
       <View style={[styles.inputBar, { borderTopColor: c.border, backgroundColor: c.bg, paddingBottom: insets.bottom + 8 }]}>
         <Pressable
           onPress={recording ? stopRec : startRec}
-          disabled={transcribing || send.isPending}
+          disabled={!online || transcribing || send.isPending}
           style={({ pressed }) => [
             styles.micBtn,
-            { backgroundColor: recording ? c.danger : c.cardAlt, opacity: pressed ? 0.8 : 1 },
+            { backgroundColor: recording ? c.danger : c.cardAlt, opacity: !online ? 0.4 : pressed ? 0.8 : 1 },
           ]}
         >
           {transcribing ? (
@@ -214,22 +232,24 @@ export function ChatScreen({ navigation }: RootTabProps<"Coach">) {
         </Pressable>
         <TextInput
           style={[styles.input, { backgroundColor: c.inputBg, borderColor: c.border, color: c.text }]}
-          placeholder={recording ? "Gravando… toque em ■ para parar" : transcribing ? "Transcrevendo…" : "Pergunte ou peça algo…"}
+          placeholder={
+            !online ? "Sem internet" : recording ? "Gravando… toque em ■ para parar" : transcribing ? "Transcrevendo…" : "Pergunte ou peça algo…"
+          }
           placeholderTextColor={c.textMuted}
           value={text}
           onChangeText={setText}
           multiline
-          editable={!recording && !transcribing}
+          editable={online && !recording && !transcribing}
         />
         <Pressable
           onPress={() => submit()}
-          disabled={!text.trim() || send.isPending}
+          disabled={!online || !text.trim() || send.isPending}
           style={({ pressed }) => [
             styles.sendBtn,
-            { backgroundColor: !text.trim() || send.isPending ? c.cardAlt : c.primary, opacity: pressed ? 0.8 : 1 },
+            { backgroundColor: !online || !text.trim() || send.isPending ? c.cardAlt : c.primary, opacity: pressed ? 0.8 : 1 },
           ]}
         >
-          <Ionicons name="arrow-up" size={22} color={!text.trim() || send.isPending ? c.textMuted : c.primaryText} />
+          <Ionicons name="arrow-up" size={22} color={!online || !text.trim() || send.isPending ? c.textMuted : c.primaryText} />
         </Pressable>
       </View>
     </KeyboardAvoidingView>
@@ -289,6 +309,15 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   actionText: { fontSize: 12, fontWeight: "600" },
+  offline: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  offlineText: { flex: 1, fontSize: 12, fontWeight: "600" },
   inputBar: {
     flexDirection: "row",
     alignItems: "flex-end",
