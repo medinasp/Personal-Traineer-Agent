@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { AppState } from "react-native";
 
+import { hideRestNotification, showRestNotification } from "./restNotification";
+
 const BG_LIMIT_MS = 5 * 60 * 1000; // 5 min em segundo plano => para sozinho
 
 interface RestTimerValue {
@@ -46,6 +48,7 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
             setAccumulated(total);
             startedAt.current = null;
             setRunning(false);
+            void hideRestNotification();
           }
           bgAt.current = null;
         }
@@ -64,15 +67,19 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
       setAccumulated((a) => a + Math.floor((now - (startedAt.current ?? now)) / 1000));
       startedAt.current = null;
       setRunning(false);
+      void hideRestNotification();
     } else {
       startedAt.current = Date.now();
       setRunning(true);
+      // timestamp = "zero" do cronometro = agora menos o que ja foi acumulado
+      void showRestNotification(Date.now() - accumulated * 1000);
     }
   }
   function stop() {
     startedAt.current = null;
     setAccumulated(0);
     setRunning(false);
+    void hideRestNotification();
   }
 
   return <Ctx.Provider value={{ elapsed, running, toggle, stop }}>{children}</Ctx.Provider>;
