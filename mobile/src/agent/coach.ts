@@ -14,6 +14,7 @@ import {
   isConfigured,
   type ChatMessage,
 } from "./groq";
+import { getPool, maintain } from "./modelPool";
 import { callTool, TOOLS } from "./tools";
 
 export { CoachConfigError, CoachOfflineError, CoachRateLimitError, isConfigured };
@@ -74,10 +75,27 @@ export async function runChat(userText: string): Promise<CoachReply> {
 
   const actions: string[] = [];
   let reply = "";
-  let modelIdx = 0; // elo da cadeia em uso; se cair pra um fallback, fixa nele no resto do turno
+  let modelIdx = 0; // elo do pool em uso; se cair pra um fallback, fixa nele no resto do turno
+  let pool = await getPool();
+  let healed = false; // ja tentamos regenerar o pool neste turno? (evita loop)
 
   for (let i = 0; i < MAX_TOOL_LOOPS; i++) {
-    const choice = await chatCompletion(messages, TOOLS, modelIdx);
+    let choice;
+    try {
+      choice = await chatCompletion(messages, TOOLS, pool, modelIdx);
+    } catch (e) {
+      // cadeia inteira bateu limite -> tenta regenerar o pool (descobre modelo fresco) e repetir uma vez
+      if (e instanceof CoachRateLimitError && !healed) {
+        healed = true;
+        const res = await maintain(true);
+        if (res.added.length > 0) {
+          pool = res.models;
+          modelIdx = Math.max(0, pool.indexOf(res.added[0])); // comeca pelo modelo novo
+          continue;
+        }
+      }
+      throw e; // nada novo pra tentar -> propaga erro amigavel (offline / limite+tempo / config)
+    }
     modelIdx = choice.modelIndex;
     if (choice.tool_calls && choice.tool_calls.length > 0) {
       messages.push({ role: "assistant", content: choice.content || "", tool_calls: choice.tool_calls });

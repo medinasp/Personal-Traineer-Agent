@@ -6,7 +6,7 @@
  * erro transitorio, cai pro proximo. Erros viram mensagens amigaveis em pt-BR,
  * inclusive "limite atingido, volta em ~X".
  */
-import { GROQ_API_KEY, GROQ_MODELS, GROQ_WHISPER_MODEL } from "../config";
+import { GROQ_API_KEY, GROQ_WHISPER_MODEL } from "../config";
 
 const BASE = "https://api.groq.com/openai/v1";
 
@@ -116,19 +116,20 @@ export interface ChatResult extends Completion {
   modelIndex: number; // qual elo da cadeia respondeu (pra fixar no resto do turno)
 }
 
-/** Tenta os modelos da cadeia a partir de `fromIndex`. Erros amigaveis se todos falharem. */
+/** Tenta os modelos de `models` a partir de `fromIndex`. Erros amigaveis se todos falharem. */
 export async function chatCompletion(
   messages: ChatMessage[],
   tools: ToolDef[],
+  models: string[],
   fromIndex = 0,
 ): Promise<ChatResult> {
   let soonest: number | null = null;
   let sawRateLimit = false;
   let sawOffline = false;
 
-  for (let i = fromIndex; i < GROQ_MODELS.length; i++) {
+  for (let i = fromIndex; i < models.length; i++) {
     try {
-      const r = await callOne(GROQ_MODELS[i], messages, tools);
+      const r = await callOne(models[i], messages, tools);
       return { ...r, modelIndex: i };
     } catch (e) {
       if (e instanceof CoachConfigError) throw e; // bug de config: falha alto, nao mascara
